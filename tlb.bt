@@ -1,0 +1,418 @@
+//------------------------------------------------
+//--- 010 Editor v7.0 Binary Template
+//
+//      File: tlb.bt
+//   Authors: dengxun@360A-Team
+//   Version: 0.1beta
+//   Purpose: parse microsoft type library file (.tlb)
+//  Category: 010 editor
+//     Email: ylbhz@hotmail.com
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+typedef struct {
+    UINT Data;
+    UINT Data;
+    UINT Data;
+    UINT Data;
+} GUID <read=GUIDread>;
+
+string GUIDread(GUID &in) {
+    string out;
+    SPrintf(out, "%08X-%08X-%08X-%08X", in.Data[0], in.Data[1], in.Data[2], in.Data[3]);
+    return out;
+}
+
+struct TLB {
+    struct HEADER {
+        CHAR    signature[4]; //string "MSFT" (0x5446534D)
+        LONG    magic;        //0x00010002 format's version?
+        LONG    guidIdx;   //offset into the GUID table of the lib ID, otherwise = -1
+        LONG    localeID;  //The locale ID, for example 0x0409 = "USA"
+        LONG    unknown;    //Unknown
+        struct  VARFLAGS {
+            LONG    sysKind : 4;    //The lower four bits is the SysKind code (see the table)
+            LONG    : 1;
+            LONG    helpFile : 1;   //Bit 5 = 1 if a helpfile is defined
+            LONG    : 2;
+            LONG    fileName : 1;   //Bit 8 = 1 if the TypeLib File Name field is present
+            //bitmap padded by 010 editor here
+        } varflags;
+        ULONG   version;    //Set with SetVersion()
+        ULONG   flags;      //Set with SetFlags()
+        ULONG   nTypeinfo;  //The number of TypeInfo structures present
+        LONG    pszHelp;    //Offset into string table of help string
+        LONG    szHelpContext;  //Help string context
+        LONG    helpContext;    //Help context
+        ULONG   nNameTable;     //Name table count
+        ULONG   nNameTableChars;    //Number of characters in the name table
+        LONG    pszTypeLibName; //Offset into the string table of the TypeLib's name
+        LONG    pszHelpFileName;    //Offset into the string table of the help file's name
+        LONG    customData; //File offset to custom data/GUID table, otherwise = -1
+        ULONG   reserved1;  //Unknown, always 0x20 (GUID hash size?)
+        ULONG   reserved2;  //Unknown, always 0x80 (name hash size?)
+        LONG    dispatchPosition;   //hRefType to IDispatch, of -1 if there's no IDispatch
+        ULONG   nImportInfo;    //Number of ImpInfo structures
+        if(header.varflags.fileName) {  //This field is only present if bit 8 of the VarFlags field is set
+            LONG    szTypeLibFileName;  //Offset into string table of TypeLib file name.
+        }
+    } header <bgcolor=cLtGray>;
+    LONG    typeInfoOffsetTable[header.nTypeinfo]; //This section is an array of 32-bit offsets to all the TypeInfo structures
+    typedef struct DESCRIPTOR { //Segment Descriptor
+        LONG    offset; //File offset to segment
+        ULONG   length; //Length of segment
+        ULONG   reserved1;  //Unknown, always -1
+        ULONG   reserved2;  //Unknown, always 0x0f, though someone reported seeing a value of 0x03
+    } descriptor; // A SegDesc for any segment which is not present has an offset value of -1 (0xFFFFFFFF) and a length value of zero.
+    struct DESCRIPTORS {
+        descriptor  typeInfoTable;
+        descriptor  importInfo;
+        descriptor  importedFiles;
+        descriptor  referencesTable;
+        descriptor  libTable;
+        descriptor  guidTable;
+        descriptor  unknown1;
+        descriptor  nameTable;
+        descriptor  stringTable;
+        descriptor  typeDescriptors;
+        descriptor  arrDescriptors;
+        descriptor  customData;
+        descriptor  guidOffsets;
+        descriptor  unknown2;
+        descriptor  unknown3;
+    } descriptors; //Each of the segments is described in its own section of this document.
+    
+    struct TypeInfo
+    {
+        struct {
+            LONG    typeKindCode : 4;   //type kind code
+            LONG    : 7;
+            LONG    alignment : 5;  //alignment value
+            //bitmap padded by 010 editor here
+        } typeKind;
+        /*File offset to an array of Function Records and Property Records, if there are
+         *any functions or properties present (that is, if either Function Count or
+         *Property Count are greater than zero), otherwise it's FileLength + 1 (it points
+         *to just past the end of the file)*/
+        LONG    funcRecords;
+        LONG    memoryAllocation;   //Recommended (or required?) amount of memory to allocate for...? equals 0 if there's no element
+        /*Equals -1 if there's no element, otherwise, it's (probably) the size of the
+         *reconstituted TypeInfo data for the operating system's internal use (the data
+         *is stored more compactly in the file than when it's in RAM during use).*/
+        ULONG   nReconstituted;     //Reconstituted Size of TypeInfo Data
+        ULONG   reserved1;  //always? 3
+        ULONG   reserved2;  //always? 0
+        USHORT  nFunction;  //number of functions in array, for field funcRecords?
+        USHORT  nProperty;  //number of properites in array
+        ULONG   reserved3;  //3 - 6, always? 0
+        ULONG   reserved4;
+        ULONG   reserved5;
+        ULONG   reserved6;
+        ULONG   pGuid;      //offset into GUID Table of GUID
+        ULONG   typeFlags;  //same as Type Flags
+        LONG    pszName;    //offset into the Name table of the name
+        ULONG   version;    //Element version
+        LONG    pszDoc;     //offset into string table of the DocString
+        LONG    helpStringContext;
+        LONG    helpContext;
+        LONG    pCustomData;    //offset into the custom data table of custom data
+        USHORT  nImplementedInterfaces; //number of implemented interfaces
+        USHORT  nVirtualTable;  //Virtual table size, not including inherits
+        ULONG   unknown;
+        /*Offset into Type Descriptor Table, or in base interfaces.
+         * If TypeKind is a coclass, then DataType1 is an offset into RefTable
+         * If TypeKind is a interface, then DataType1 is a reference to inherited interface
+         * If TypeKind is a module, then DataType1 is an offset into the Name Table of the DllName*/
+        LONG    dataType1;
+        LONG    dataType2;  //if 0x8000, entry above is valid, else it is zero?
+        LONG    reserved7 <bgcolor=0x0000FF, format=hex>;  //always? 0 ==> LoadTypeLib() BOF here!!!
+        LONG    reserved8;  //always? -1
+        /*The order of the "Implemented Interfaces" and "Virtual Table Size"
+         *are reversed for bigendian format*/
+    } typeinfo[header.nTypeinfo];
+
+    /*According to ReactOS:
+     *This segment always exists, always the same size (0x80).
+     *Possibly a hash table with offsets to GUID? */
+    struct LibTable {
+        LONG    unknown[32];
+    } libtable;
+
+    struct GUIDEntry {
+        GUID    guid;
+        LONG    refType;
+        LONG    pNextHash;
+    } guidtable[descriptors.guidTable.length / sizeof(struct GUIDEntry)];
+
+    do { //parse array by pNext
+            struct ReferencesTable {
+            /*According to ReactOS: If it's a multiple of 4, then it's an offset into the TypeInfo Table, other-
+             *wise it's an offset into the external reference table with an offset of 1. */
+            LONG    refType;
+            LONG    flags;
+            LONG    pCustomData;    //Offset into the Custom Data Table of the custom data, if any.
+            LONG    pNext;  //Next offset, or -1 if it's the last one.
+        } reftable;
+    } while(reftable.pNext != -1);
+
+    struct ImportInfo {
+        SHORT   count;
+        UBYTE   flags : 1;  //Bit 0 = 1 if "GUID Offset" is an offset to a GUID, or zero if it's a TypeInfo index in the specified typelib
+        UBYTE   typeKind;   //typekind of reference
+        LONG    pImportFile;    //offset into the import table table
+        LONG    pGuid;      //offset into GUID table or typeinfo index(see bit 0 of flags)
+    } importinfo[header.nImportInfo];
+
+    struct TlbImportLib {
+        struct {
+            LONG    pGuid;  //offset into the GUID table of the GUID
+            LONG    lcid;   //Locale ID
+            USHORT  majver;
+            USHORT  minver;
+            SHORT   size;   //Divide this value by 4 to get the actual length of the file name.
+            CHAR    name[size/4];
+        } data;
+        CHAR    padding[descriptors.importedFiles.length - sizeof(data)];
+    } tlbimportlib;
+    /*According to ReactOS:
+     *This segment is always created, always the same size (0x0200). It contain
+     *offsets into the name table.*/
+    struct {
+        LONG    unknown[128];
+    } unknown01;
+
+    struct NameTable {    
+        local int i = 0;
+        for(i = 0;i < header.nNameTable;i ++) {
+            struct {
+                LONG    refType;
+                LONG    nextHash;
+                BYTE    length;
+                BYTE    flags;
+                USHORT  hash;
+                CHAR    name[length];
+                if(length % 4 != 0) {
+                    CHAR    padding[4 - length % 4];
+                }
+            } item;
+        }
+    } nametable;
+
+    struct StrTable {
+        local int size = 0;
+        local int total = 0;
+        do {
+            struct {
+                USHORT  length;
+                CHAR    str[length];
+                size = length + sizeof(USHORT);
+                if(size % 4 != 0) {
+                    CHAR    padding[4 - size % 4];
+                }
+            } item;
+            total += sizeof(item);
+        } while(total < descriptors.stringTable.length);
+    } strtable;
+    struct TypeDescriptor {
+        /* Value1 contains a data type code in its lower twelve bits. One can apply
+         *VT_TypeMask to mask out the upper four bits.
+         *If (Value2 AND 0x7FFE) = 0x7FFE then Value1 contains the ONLY data type defined (see "Value2").
+         *The interpretations of Value3 and Value4 are based partly on Value1 (see "Value3 and Value4"). */
+        struct {
+            SHORT   primaryDataType: 12;
+            SHORT   undefined : 4;
+        } value1;
+        /*As mentioned above, if (Value2 AND 0x7FFE) = 0x7FFE then Value1 is the only
+        data type defined. Otherwise, the primary type is either ByRef, an array or a
+        vector and therefore, there's a secondary data type to be defined. If so, then
+        the following bit assignments apply.
+        The upper four bits are flags and the lower twelve contain the "base data type"
+        code. The base data type, is either one which is compatible with the primary
+        type, or often, the very same code.
+         Presumably, only one of the flag bits will ever be set. The reserved bit
+        hasn't been encountered yet while studying the format.*/
+        struct {
+            SHORT   baseDataType: 12;
+            SHORT   vector: 1;
+            SHORT   array: 1;
+            SHORT   byRef: 1;
+            SHORT   reserved: 1;
+        } value2;
+        SHORT   value3;
+        /*Under some conditions, these two are combined to form a single Dword. This
+        is done by using Value3 as the low word, and Value4 as the high word. Note
+        that the resulting combinations are often subjected to additional operations
+        such as ANDing and division.
+        
+        * If (Value1 AND VT_TypeMask) equals either VT_Ptr or VT_SafeArray then Value
+          3 and Value4 are interpreted as follows:
+        
+            * If Value4 is negative (MSB = 1) then (Value3 AND 0x7FF8) yields an offset
+              into the Type Descriptor Table.
+            * If Value4 is NOT negative (MSB = 0) then Value2 and Value3 are to be
+              combined to form a Dword, then ANDed with (Value3 \ 8) to yield an offset
+              into a Type Descriptor file. This doesn't sound sensible, but it looks
+              like what the ReactOS code was doing.
+        
+        * If (Value1 AND VT_TypeMask) equals VT_CArray then Value3 and Value4 are
+          combined to form a Dword offset into the Array Descriptor Table
+        
+        * If (Value1 AND VT_TypeMask) equals VT_UserDefined then Value3 and Value4 are
+          combined to form a Dword, then ANDed with 0xFFFFFFF8 to yield an offset into
+          the Type Descriptor Table*/
+        SHORT   value4;
+    } typedescs[descriptors.typeDescriptors.length / sizeof(struct TypeDescriptor)];
+    
+    struct ArrayDescriptor {
+        local int total = 0;
+        do {
+            struct {
+                ULONG   descType;   //If < 0 then the low-word contains the variable-type code, otherwise it's an offset to another array descriptor.
+                USHORT  dimensions; //The number of dimensions in the array.
+                /*If the low-byte > 0, it contains the datatype code of the data which is stored
+                  in the array, otherwise the datatype code is in the high-byte.*/
+                USHORT  dataType;
+                /*Contains one SafeArrayBound structure for each dimension of the array, telling
+                  how many elements are in the dimension and its lower bound.*/
+                struct Bound {
+                    ULONG   elements;   //The number of elements in the Array
+                    LONG    lower;  //The lower bound of the array
+                } bounds[dimensions];
+            } item;
+            total += sizeof(item);
+        } while(total < descriptors.arrDescriptors.length);
+    } arrDescs;
+    /*This segment is used for custom data and default parameter values. It
+    contains at minimum, an identifier which incorporates values from a time-
+    stamp, the file's size and perhaps other things. The identifier is updated
+    every time the ODL/IDL source is compiled.*/
+    struct CustomData {
+        UBYTE   data[descriptors.customData.length];
+    } customdata;
+    
+    /*This segment contains 32-bit offsets into the GUID Table. Some offsets are
+    set to -1 (0xFFFFFFFF) to mark them as invalid. */
+    struct GUIDOffset {
+        LONG    offset[descriptors.guidOffsets.length / sizeof(LONG)];
+    } guidoffsets;
+
+    /*Note: The order of the "Virtual Table Offset" and "Func Desc Size" fields are
+    reversed for bigendian format.*/
+    struct FuncAndPropertyRecords {
+        local int i = 0;
+        for(i = 0;i < 3;i ++) { //header.nTypeinfo
+            if(typeinfo[i].nFunction == 0 && typeinfo[i].nProperty == 0)
+                break;
+            struct {
+                ULONG   sizeFuncRecords; //size of everything in the array group except for itself
+                if(typeinfo[i].nFunction > 0) {
+                    struct FuncRecords {
+                        local int j = 0;
+                        for(j = 0;j < typeinfo[i].nFunction;j ++) {
+                            struct {
+                                USHORT  size;   //The size of the FuncRecord structure, including optional fields and ParamInfo's
+                                USHORT  unknown;
+                                SHORT   dataType;   //Data type returned by the function
+                                /*If the MSB = 1, then the low byte is valid. So far it seems to always be
+                                valid, except for pointers. When MSB does equal 1, the low byte is the code
+                                for a data type that's equivalent to or compatible with that in DataType.*/
+                                SHORT   flags;
+                                LONG    reserved1;
+                                SHORT   pVirtualTable;  //Vritual Table offset
+                                /*From ReactOS: Size of the reconstituted FUNCDESC and related structs.
+                                The "structs" refered to are those used by the operating system for run-time
+                                storage, and aren't a part of the TypeLib format.*/
+                                SHORT   sizeOfDesc;
+                                /*This field is 32 bits wide, 
+                                but only the meanings of the lower thirteen bit are known. */
+                                struct  FKCCIC {
+                                    LONG    funcKind: 3;    //Bits zero through two contain the FunctionKind
+                                    LONG    invocationKind: 4;  //Bits three through six contain the InvocationKind
+                                    LONG    custData: 1;    //Bit seven is set if there is custom data is present
+                                    LONG    callingConvention: 4;   //Bits eight through eleven contain the CallingConvention
+                                    LONG    defvalue: 1;    //Bit twelve is set if there a default value is present
+                                    //unknown bit field blew
+                                } fkccic;
+                                SHORT   nParameter;
+                                SHORT   unknown2;
+                                LONG    helpContext;
+                                LONG    pszHelp;
+                                //LONG    entry;
+                                //LONG    reserved2;
+                                //LONG    reserved3;
+                                //LONG    pszHelpContext;
+                                if(fkccic.custData) {
+                                LONG    customData; //Offset into the Custom Data Table of Custom Data for the function
+                                
+                                /*An array of Custom Data with one element for each parameter. If the MSB = 1,
+                                then the default value is in the lower three bytes, otherwise, it's an offset
+                                into the Custom Data Table where the default value can be found. The only time
+                                an offset is resorted to, is when the default value can't fit into the lower
+                                24 bits.
+                                 If a parameter has a default value, bit 5 (PARAMFLAG_FHASDEFAULT) of the
+                                ParamFlags field of its ParamInfo structure will be set, but the existence of
+                                a set bit 5 of a ParamFlags field alone, might not reliably indicate the
+                                presence of a "Custom Data for Arguments" array. To determine if this (optional)
+                                array is present, one should make sure that there's enough room for it to fit.
+                                
+                                Note:
+                                 If even one parameter has a default value, then there will be elements for
+                                all the parameters in the FuncRecord, but the only valid elements will be
+                                the ones for those which actually have default values.*/
+                                LONG    customDataArgs[nParameter];
+                                }
+                                struct ParamInfo {
+                                    SHORT   dataType;   //The data-type code for the parameter.
+                                    SHORT   flags;
+                                    LONG    pszName;    //Offset to the parameter's name in the Name Table
+                                    struct  ParamFlags {
+                                        LONG    in: 1;
+                                        LONG    out: 1;
+                                        LONG    LCID: 1;
+                                        LONG    retval: 1;
+                                        LONG    optional: 1;
+                                        LONG    hasDefault: 1;
+                                        LONG    HasCustData: 1;
+                                    } paramFlags;
+                                } paramInfo[nParameter];
+                            } item;
+                            
+                        }
+                    } funcrecords;
+                }
+                /*The order of the VarKind and VarDescSize fields are 
+                reversed for bigendian format.*/
+                struct PropertyRecords {
+                    local int x = 0;
+                    for(x = 0;x < typeinfo[i].nProperty;x ++) {
+                        struct {
+                            USHORT  size;   //Size of PropRecord
+                            USHORT  nProperty;  //property number?
+                            SHORT   dataType;   //data type of the variable
+                            SHORT   flags;  //varflags
+                            SHORT   varKind;
+                            /*From ReactOS: Size of the reconstituted VARDESC and related structs.
+                            The "structs" refered to are those used by the operating system for run-time
+                            storage, and aren't a part of the TypeLib format.*/
+                            SHORT   nVarDesc;
+                            LONG    offsetValue;    //Value of the variable or the offset in the data structure
+                            LONG    unknown;
+                            if(size == 28) {
+                                LONG    helpContext;
+                                LONG    pszHelp;
+                            //LONG    reserved;   //unknow(-1)
+                            //LONG    pCustomData;    //Custom Data offset
+                            //LONG    szHelpContext;
+                            }
+                        } item;
+                    }
+                } proprecords;
+                LONG   method2PropertyID[typeinfo[i].nFunction + typeinfo[i].nProperty];
+                LONG   nameOffsets[typeinfo[i].nFunction + typeinfo[i].nProperty];
+                LONG   recordOffsets[typeinfo[i].nFunction + typeinfo[i].nProperty];
+            } item;
+            //Printf("%d %d %d %d\r\n", sizeof(item), typeinfo[i].nProperty, typeinfo[i].nFunction, item.sizeFuncRecords);
+        }
+    } f2precords;
+} tlb;
