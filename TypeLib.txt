@@ -1,0 +1,2708 @@
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *                                           *
+            *              The Unofficial               *
+            *                                           *
+            *            TypeLib Data Format            *
+            *                                           *
+            *               Specification               *
+            *                                           *
+            *                                           *
+            *                           by TheirCorp    *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *                 Table of                  *
+            *                 Contents                  *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+
+        <o><o><o><o><o><o><o><o><o>
+                  Part One:
+                Introduction
+        <o><o><o><o><o><o><o><o><o>
+
+    * Introduction
+    * Notes on this Document
+    * Physical Layout of TypeLib Data
+
+
+        <o><o><o><o><o><o><o><o><o>
+                Part Two:
+            Data Structures
+        <o><o><o><o><o><o><o><o><o>
+
+    * The TypeLib Header
+    * Offsets to TypeInfos
+    * Segment Directory
+    * TypeInfo Table
+    * ImportInfo Table
+    * Imported TypeLib Table
+    * References Table
+    * Lib Table
+    * GUID Table
+    * Unknown 01
+    * Name Table
+    * String Table
+    * Type Descriptors
+    * Array Descriptors
+    * Custom Data Table
+    * GUID Offsets
+    * Unknown 02
+    * Unknown 03
+    * Function Records and Property Records Array
+    * Function Record
+    * Parameter Info
+    * Property Record
+    * ID, Name and Reference Arrays
+
+
+
+        <o><o><o><o><o><o><o><o><o>
+                Part Three:
+                 Equates
+        <o><o><o><o><o><o><o><o><o>
+
+    * Locale IDs
+    * Data-Types (Variable-Types)
+    * Calling Convention Codes
+    * Function Type Codes
+    * Function Flags
+    * Invocation Kind Flags
+    * Parameter Flags
+    * System Kind Codes
+    * Type Kind Codes
+    * Type Flags
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               Introduction                *
+            *                                           *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    What is TypeLib Data?
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ TypeLib data is used by operating systems to tell them     how to connect COM
+objects. COM stands for Component Object Model.
+ It commonly occurs alone in ".TLB" files and also as resources in PE (Portable
+Executable) format files (.DLL, .EXE, .OCX, .OCA, ...).
+ When it occurs as a resource, it is in a section named "TYPELIB". There can be
+multiple TypeLib resources in a PE file.
+
+ TypeLib data comes in only(?) two internal formats: "MSFT" and "SLTG". This
+document only covers the MSFT format. The details of the SLGT format were not
+known at the time of this writing, and so will be published later, if ever. SLGT
+format data is relatively rare anyway: perhaps a few percent of the files on a
+32-bit system will have any. It would certainly be good to know it though. It
+appears PowerBASIC's latest compilers use SLTG, which is another good reason to
+learn it.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Origins of this Document
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ This document is based largely on studies of code from the ReactOS project at:
+http://www.reactos.org/en/index.html
+The primary source file studied (along with #included files) was:
+...reactos\dll\win32\oleaut32\typelib.c
+ Some (mostly minor) aspects of the format have not been confirmed by TheirCorp
+and so are based entirely on (sometimes unclear) comments from ReactOS source
+code. Some of these are marked as "According to ReactOS".
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Credits and Copyleft
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ This document was created by TheirCorp.
+You may freely distribute this file even if it's modified. If you do distribute
+a modified version, please include a copy of, or a link to an original file.
+And please always give credit to TheirCorp for the original.
+
+This file's official home on the web is:
+http://theircorp.freezoka.com/files/TypeLib.txt
+There is expected to be an HTML version in the future.
+
+TheirCorp's website is:
+http://theircorp.freezoka.com/index.php
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               Notes on this               *
+            *                 Document                  *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    COM Terminology and ODL Syntax
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Some of the names and terminology used are based on articles by Microsoft on
+COM, automation and the syntax of .ODL/.IDL files. You can learn more about COM
+technology at the following web pages:
+
+    COM Topics
+http://msdn.microsoft.com/en-us/library/aa139695.aspx
+
+    COM (Component Object Model)
+http://msdn.microsoft.com/en-us/library/ms680573(VS.85).aspx
+
+    Automation Programming Reference
+http://msdn.microsoft.com/en-us/library/ms221375.aspx
+
+    Microsoft Interface Definition Language (MIDL)
+http://msdn.microsoft.com/en-us/library/aa367091(VS.85).aspx
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Naming Conventions
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ The terms "variable type" and "data type" are used almost interchangeably. The
+words "function" and "method" are treated as synonymous. It wasn't clear from
+the available material what their proper usage is, or whether it really matters.
+
+ A data section is referred to as a "segment" if it has an entry in the "Segment
+Directory" section. This is to help you distinguish between them.
+
+ Items named "Unknown..." are thought to contain useful information, but no one
+feels sure what it's for. This is only a general rule at the moment.
+
+ Items named "Reserved..." are thought to never change in value or to contain no
+useful information. This is only a general rule at the moment.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Diagrams
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+ Diagrams of data structures are outlined like so:
+ +-----------------------------------------------------+
+ |                                                     |
+ +-----------------------------------------------------+
+
+ Other diagrams are outlined like so:
+ +=====================================================+
+ |                                                     |
+ +=====================================================+
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Optional Data
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ A question mark following a box in a diagram, means the corresponding data
+might be absent.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Data Types
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ The data types composing the structures encountered in this format are
+indicated in a fairly language-neutral notation:
+* Byte              8
+* Word              16
+* Dword             32
+* Short Integer     ±16
+* Long Integer      ±32
+
+ The components of data structures are usually referred to as "fields".
+
+ Most hex values are prefixed with "0x", from c/c++ syntax. Any exceptions
+should be obvious enough.
+
+ Most data types are preferentially interpreted as signed integers, because it
+often makes it easier to write code to test for certain values. ReactOS seemed
+to prefer signed integers also.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Offsets
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ A field which is an offset is indicated as such by following its name with
+an arrow (==>).
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Arrays
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Arrays are indicated by a pair of square braces "[]", and usually containing an
+indication of the number of its elements.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Notation for Structures
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Diagrams of data structures will usually have an indicator of the data types of
+its fields at their ends.
+
+ The example below, shows a field named "Field Name" which is an array of
+sixteen 32-bit signed integers, and which might be absent (note the question
+mark).
+
+ +-----------------------------------------------------+
+ | Field Name                                   ±32[16]| ?
+ +-----------------------------------------------------+
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *           The Physical Layout             *
+            *           of the TypeLib Data             *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+     +=====================================================+
+     | TypeLib Header                                      |
+     +=====================================================+
+     | Offsets to TypeInfos                                |
+     +=====================================================+
+     | Segment Directory                                   |-->------->------+
+     +=====================================================+                  \
+ +<--| TypeInfo Table                                      |<-+                |
+/    +=====================================================+   \               |
+|    | ImportInfo  Table                                   |<---+              |
+|    +=====================================================+     \             |
+|    | Imported Type Lib Table                             |<-----+            |
+|    +=====================================================+       \           |
+|    | References Table                                    |<-------+          |
+|    +=====================================================+         \         |
+|    | Lib Table                                           |<---------+        |
+|    +=====================================================+           \       |
+|    | GUID Table                                          |<-----------+      |
+|    +=====================================================+             \     |
+|    | Unknown 01                                          |<-------------+    |
+|    +=====================================================+               \  /
+|    | Name Table                                          |<---------------|+
+|    +=====================================================+               /
+|    | String Table                                        |<-------------+
+|    +=====================================================+             /
+|    | Type Descriptors                                  ? |<-----------+
+|    +=====================================================+           /
+|    | Array Descriptors                                 ? |<---------+
+|    +=====================================================+         /
+|    | Custom Data                                         |<-------+
+|    +=====================================================+       /
+|    | GUID Offsets                                        |<-----+
+|    +=====================================================+     /
+|    | Unknown 02                                        ? |<---+
+|    +=====================================================+   /
+|    | Unknown 03                                        ? |<-+
+\    +=====================================================+
+ +-->| Function and Property Records                     ? |
+     +=====================================================+
+
+
+ Those sections marked with a question mark may be absent in some files. All
+the others are always(?) present.
+ The arrows indicate some of the more important references between sections:
+* The Segment Directory serves as a table of contents for most of the sections.
+* The TypeInfo Table refers to the Function and Property Records section, which
+  is always(?) at the very end of the file.
+
+ There are many other references made between sections and segments, but that
+would result in a cluttered, confusing diagram.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *           The TypeLib Header              *
+            *               (TlbHeader)                 *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+        The TlbHeader Structure
+
+ +-----------------------------------------------------+
+ | Magic1                                          ±32 |
+ +-----------------------------------------------------+
+ | Magic2                                          ±32 |
+ +-----------------------------------------------------+
+ | GUID ==>                                        ±32 |
+ +-----------------------------------------------------+
+ | Locale ID                                       ±32 |
+ +-----------------------------------------------------+
+ | Locale ID 2                                     ±32 |
+ +-----------------------------------------------------+
+ | Varflags                                        ±32 |
+ +-----------------------------------------------------+
+ | Version                                         ±32 |
+ +-----------------------------------------------------+
+ | Flags                                           ±32 |
+ +-----------------------------------------------------+
+ | TypeInfo Count                                  ±32 |
+ +-----------------------------------------------------+
+ | Help String ==>                                 ±32 |
+ +-----------------------------------------------------+
+ | Help String Context                             ±32 |
+ +-----------------------------------------------------+
+ | Help Context                                    ±32 |
+ +-----------------------------------------------------+
+ | Name Table Count                                ±32 |
+ +-----------------------------------------------------+
+ | Name Table Chars                                ±32 |
+ +-----------------------------------------------------+
+ | TypeLib Name ==>                                ±32 |
+ +-----------------------------------------------------+
+ | Help File Name ==>                              ±32 |
+ +-----------------------------------------------------+
+ | Custom Data ==>                                 ±32 |
+ +-----------------------------------------------------+
+ | Reserved1                                       ±32 |
+ +-----------------------------------------------------+
+ | Reserved2                                       ±32 |
+ +-----------------------------------------------------+
+ | Dispatch Position                               ±32 |
+ +-----------------------------------------------------+
+ | ImportInfo Count                                ±32 |
+ +-----------------------------------------------------+
+ | TypeLib File Name ==>                           ±32 | ?
+ +-----------------------------------------------------+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Magic1
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ This contains the string "MSFT" (0x5446534D) and is used to identify the file's
+format. A value of "SLGT" indicates the file is of another TypeLib format which
+is not nearly as common and which is not documented in this file.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Magic2
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ = 0x00010002 (the format's version number?)
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    GUID Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into the GUID Table of the Lib ID, otherwise -1
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Locale ID
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ The locale ID, for example 0x0409 = "USA", "English United States"
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Locale ID 2
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Unknown
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Varflags
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Flags (largely unknown)
+* The lower four bits is the SysKind code (see the table)
+* Bit 5 = 1 if a helpfile is defined
+* Bit 8 = 1 if the TypeLib File Name field is present
+
+       +-+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+      /  |               |               |               |               |
+     /   | 15  14  13  12| 11  10  9   8 | 7   6   5   4 | 3   2   1   0 |
+     \   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+      |  | ? | ? | ? | ? | ? | ? | ? | F | ? | ? | H | ? |   |   |   |   |
+     /   |                           | i |       | e |   |               |
+     |   |                           | l |       | l |   |    SysKind    |
+    /    |                           | e |       | p |   |               |
+    \    |                           | N |       | F |   |               |
+     \   |                           | a |       | i |   |               |
+     /   |                           | m |       | l |   |               |
+     \   |   |   |   |   |   |   |   | e |   |   | e |   |   |   |   |   |
+      +--+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Version
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Set with SetVersion()
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Flags
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Set with SetFlags()
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    TypeInfo Count
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ The number of TypeInfo structures present.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Help String Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into String Table of help string.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Help String Context
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Help Context
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Name Table Count
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Number of names in the Name Table.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Name Table Chars
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Number of characters in the Name Table.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    TypeLib Name Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into the String Table of the TypeLib's name.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Help File Name Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into the String Table of the help file's name.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Custom Data Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ File offset to Custom Data/GUID Table, if present, otherwise -1
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Reserved1
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Unknown, always 0x20 (GUID hash size?)
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Reserved2
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Unknown, always 0x80 (name hash size?)
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Dispatch Position
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ hRefType to IDispatch, or -1 if there's no IDispatch
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    ImportInfo Count
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Number of ImpInfo structures.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    TypeLib File Name Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into String Table of TypeLib file name. This field is only present if
+bit 8 of the VarFlags field is set.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *           Offsets to TypeInfos            *
+            *         ( ±32[TypeInfo Count] )           *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ This section is an array of 32-bit offsets to all the TypeInfo structures in
+the file. The number of elements in the array is in the "TypeInfo Count" field
+of the TlbHeader.
+
+ +-----------------------------------------------------+
+ | Offset[1]                                       ±32 |
+ +-----------------------------------------------------+
+ | Offset[2]                                       ±32 |
+ +-----------------------------------------------------+
+        .......
+ +-----------------------------------------------------+
+ | Offset[TypeInfoCount]                           ±32 |
+ +-----------------------------------------------------+
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *           Segment Directory               *
+            *            ( SegDesc[15] )                *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ The Segment Directory is an array of 15 segment descriptors in the form of
+SegDesc structures. Each SegDesc contains a file offset to one of the standard
+data segments and its length.
+
+
+    The SegDesc Structure
+
+ +-----------------------------------------------------+
+ | Offset                                          ±32 |
+ +-----------------------------------------------------+
+ | Length                                          ±32 |
+ +-----------------------------------------------------+
+ | Reserved1                                       ±32 |
+ +-----------------------------------------------------+
+ | Reserved2                                       ±32 |
+ +-----------------------------------------------------+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ File offset to segment.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Length
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Length of segment.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Reserved1
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Unknown, always -1
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Reserved2
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Unknown, always 0x0F, though someone reported seeing a value of 0x03.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+Note:
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ A SegDesc for any segment which is not present has an offset value of -1
+(0xFFFFFFFF) and a length value of zero.
+
+
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    The Directory Layout
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+ Notice that some of the sections mentioned in the "Physical Layout of TypeLib
+Data" diagram don't have segment descriptors:
+* TlbHeader
+* Offsets to TypeInfo Data
+* Segment Directory
+* Function and Property Records
+
+ The diagram below shows the segments in the order in which their descriptors
+appear in the array. Each of the boxes represents one SegDesc structure.
+
+
+        Order of the Segment Descriptors
+
+ +=====================================================+
+ | TypeInfo Table                                      |
+ +=====================================================+
+ | Import Info                                         |
+ +=====================================================+
+ | Imported Files                                      |
+ +=====================================================+
+ | References Table                                    |
+ +=====================================================+
+ | Lib Table                                           |
+ +=====================================================+
+ | GUID Table                                          |
+ +=====================================================+
+ | Unknown 01                                          |
+ +=====================================================+
+ | Name Table                                          |
+ +=====================================================+
+ | String Table                                        |
+ +=====================================================+
+ | Type Descriptors                                    |
+ +=====================================================+
+ | Array Descriptors                                   |
+ +=====================================================+
+ | Custom Data                                         |
+ +=====================================================+
+ | GUID Offsets                                        |
+ +=====================================================+
+ | Unknown 02                                          |
+ +=====================================================+
+ | Unknown 03                                          |
+ +=====================================================+
+
+
+ Each of the segments is described in its own section of this document.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *             TypeInfo Table                *
+            *      ( TypeInfo[TypeInfo Count] )         *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ This segment is an array of TypeInfo structures. The number of them is in the
+"TypeInfo Count" field of the TlbHeader.
+
+
+        The TypeInfo Structure
+
+ +-----------------------------------------------------+
+ | TypeKind                                        ±32 |
+ +-----------------------------------------------------+
+ | Function Records                                ±32 |
+ +-----------------------------------------------------+
+ | Memory Allocation                               ±32 |
+ +-----------------------------------------------------+
+ | Reconstituted Size                              ±32 |
+ +-----------------------------------------------------+
+ | Reserved1                                       ±32 |
+ +-----------------------------------------------------+
+ | Reserved2                                       ±32 |
+ +-----------------------------------------------------+
+ | Function Count                                  ±16 |
+ +-----------------------------------------------------+
+ | Property Count                                  ±16 |
+ +-----------------------------------------------------+
+ | Reserved3                                       ±32 |
+ +-----------------------------------------------------+
+ | Reserved4                                       ±32 |
+ +-----------------------------------------------------+
+ | Reserved5                                       ±32 |
+ +-----------------------------------------------------+
+ | Reserved6                                       ±32 |
+ +-----------------------------------------------------+
+ | GUID ==>                                        ±32 |
+ +-----------------------------------------------------+
+ | Type Flags                                      ±32 |
+ +-----------------------------------------------------+
+ | Name ==>                                        ±32 |
+ +-----------------------------------------------------+
+ | Version                                         ±32 |
+ +-----------------------------------------------------+
+ | DocString ==>                                   ±32 |
+ +-----------------------------------------------------+
+ | Help String Context                             ±32 |
+ +-----------------------------------------------------+
+ | Help Context                                    ±32 |
+ +-----------------------------------------------------+
+ | Custom Data ==>                                 ±32 |
+ +-----------------------------------------------------+
+ | Implemented Interfaces                          ±16 |
+ +-----------------------------------------------------+
+ | Virtual Table Size                              ±16 |
+ +-----------------------------------------------------+
+ | Unknown3                                        ±32 |
+ +-----------------------------------------------------+
+ | DataType1                                       ±32 |
+ +-----------------------------------------------------+
+ | DataType2                                       ±32 |
+ +-----------------------------------------------------+
+ | Reserved7                                       ±32 |
+ +-----------------------------------------------------+
+ | Reserved8                                       ±32 |
+ +-----------------------------------------------------+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    TypeKind
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+       +-+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+      /  |               |               |               |               |
+     /   | 15  14  13  12| 11  10  9   8 | 7   6   5   4 | 3   2   1   0 |
+     \   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+      |  |   |   |   |   |   | ? | ? | ? | ? | ? | ? | ? |   |   |   |   |
+     /   |     Alignment     |                           |   TypeKind    |
+     |   |                   |                           |     Code      |
+     \   |                   |                           |               |
+      +--+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+ The lower 4 bits are the Type Kind code.
+Bits 11 through 15 contain an alignment value
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Function Records
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ File offset to an array of Function Records and Property Records, if there are
+any functions or properties present (that is, if either Function Count or
+Property Count are greater than zero), otherwise it's FileLength + 1 (it points
+to just past the end of the file).
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Memory Allocation
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Recommended (or required?) amount of memory to allocate for...?
+ Equals 0 if there's no element.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Reconstituted Size of TypeInfo Data
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Equals -1 if there's no element, otherwise, it's (probably) the size of the
+reconstituted TypeInfo data for the operating system's internal use (the data
+is stored more compactly in the file than when it's in RAM during use).
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Reserved1
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Always? 3
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Reserved2
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Always? zero
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Function Count
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Count of functions in array
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Property Count
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Count of properties in array
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Reserved3 through Reserved6
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Always? zero
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    GUID Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into GUID Table of GUID
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Type Flags
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ See the "Type Flags" section
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Name Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into the Name Table of the name
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Version
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Element version
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    DocString Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into String Table of the DocString
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Help String Context
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Help Context
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Custom Data Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into the Custom Data Table of custom data
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Implemented Interfaces *
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Number of implemented interfaces
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Virtual Table Size *
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Virtual table size, not including inherits
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Unknown3
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    DataType1
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into Type Descriptor Table, or in base interfaces.
+* If TypeKind is a coclass, then DataType1 is an offset into RefTable
+* If TypeKind is a interface, then DataType1 is a reference to inherited
+  interface
+* If TypeKind is a module, then DataType1 is an offset into the Name Table of
+  the DllName
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    DataType2
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ If 0x8000, entry above is valid, else it is zero?
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Reserved7
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Always? 0
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Reserved8
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Always? -1
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+Note:
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ The order of the "Implemented Interfaces" and "Virtual Table Size" are
+reversed for bigendian format.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *            ImportInfo Table               *
+            *      ( ImpInfo[ImportInfo Count] )        *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ This segment contains information about imported types.
+
+
+        The ImpInfo structure:
+
+ +-----------------------------------------------------+
+ | Count                                           ±16 |
+ +-----------------------------------------------------+
+ | Flags                                             8 |
+ +-----------------------------------------------------+
+ | Type Kind                                         8 |
+ +-----------------------------------------------------+
+ | Import File ==>                                 ±32 |
+ +-----------------------------------------------------+
+ | GUID ==>                                        ±32 |
+ +-----------------------------------------------------+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Count
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Flags
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Bit 0 = 1 if "GUID Offset" is an offset to a GUID, or zero if it's a TypeInfo
+index in the specified typelib
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Type Kind
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ TypeKind of the reference
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Import File Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into the Import File table
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    GUID Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into GUID table or TypeInfo index (see bit 0 of Flags)
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *         Imported TypeLib Table            *
+            *             ( TLBImpLib[] )               *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ This segment contains information on imported files.
+
+
+        The TlbImpLib Structure
+
+ +-----------------------------------------------------+
+ | GUID ==>                                        ±32 |
+ +-----------------------------------------------------+
+ | LCID                                            ±32 |
+ +-----------------------------------------------------+
+ | MajVer                                           16 |
+ +-----------------------------------------------------+
+ | MinVer                                           16 |
+ +-----------------------------------------------------+
+ | Size (times 4)                                   16 |
+ +-----------------------------------------------------+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    GUID Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into the GUID table of the GUID
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    LCID
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Locale ID
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    MajVer
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    MinVer
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Size (times 4)
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Divide this value by 4 to get the actual length of the file name.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *           References Table                *
+            *           ( RefRecord[] )                 *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ This segment consists of an array of RefRecord structures.
+
+
+        The RefRecord Structure
+
+ +-----------------------------------------------------+
+ | RefType                                         ±32 |
+ +-----------------------------------------------------+
+ | Flags                                           ±32 |
+ +-----------------------------------------------------+
+ | CustData ==>                                    ±32 |
+ +-----------------------------------------------------+
+ | Next ==>                                        ±32 |
+ +-----------------------------------------------------+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    RefType
+*--*--*--*--*--*--*--*--*--*--*--*--*
+According to ReactOS:
+ If it's a multiple of 4, then it's an offset into the TypeInfo Table, other-
+wise it's an offset into the external reference table with an offset of 1.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Flags
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ ?
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    CustData Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into the Custom Data Table of the custom data, if any.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Next Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Next offset, or -1 if it's the last one.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               Lib Table                   *
+            *              ( ±32[32] )                  *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+According to ReactOS:
+ This segment always exists, always the same size (0x80). Possibly a hash table
+with offsets to GUID?
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               GUID Table                  *
+            *             ( GuidEntry[] )               *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ Is an array of GUIDEntry structures.
+
+
+    The GUIDEntry Structure:
+
+ +-----------------------------------------------------+
+ | GUID                                           8[16]|
+ +-----------------------------------------------------+
+ | hRefType                                        ±32 |
+ +-----------------------------------------------------+
+ | Next Hash                                       ±32 |
+ +-----------------------------------------------------+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    GUID
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ A 16-character string containing the GUID.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    hRefType
+*--*--*--*--*--*--*--*--*--*--*--*--*
+* = -2 for a TypeLib GUID TypeInfo offset for TypeInfo GUID.
+  Otherwise, the low two bits:
+    * = 01 for an imported TypeInfo
+    * = 10 for an imported TypeLib (used by imported TypeInfos)
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    NextHash
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset to next GUID in the hash bucket
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               Unknown 01                  *
+            *              ( ±32[128] )                 *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+According to ReactOS:
+ This segment is always created, always the same size (0x0200). It contains
+offsets into the name table.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               Name Table                  *
+            *       ( TlbName[Name Table Count] )       *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ This segment contains an array of the variable-lengthed TlbName structures. It
+stores the names of such things as: interfaces, functions, properties and para-
+meters.
+ The number of names in the table is given by the "Name Table Count" field of
+the TlbHeader.
+The total number of characters in all the names combined is given by the "Name
+Table Chars" field of the TlbHeader.
+ A TlbName is always a multiple of four bytes long. When its length needs
+adjusting, it is padded with the letter "W". The letter "W" can apparently be
+safely replaced with any other character(s).
+
+
+    The TlbName Structure
+
+ +-----------------------------------------------------+
+ | hRefType                                        ±32 |
+ +-----------------------------------------------------+
+ | Next Hash                                       ±32 |
+ +-----------------------------------------------------+
+ | Name Length                                       8 |
+ +-----------------------------------------------------+
+ | Flags?                                            8 |
+ +-----------------------------------------------------+
+ | Hash Code                                        16 |
+ +-----------------------------------------------------+
+ | Name String                           8[Name Length]|
+ +-----------------------------------------------------+
+ | Padding                                       "W"[?]| ?
+ +-----------------------------------------------------+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    hRefType
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Is -1 if name is for neither a TypeInfo, a variable, or a function (that is,
+the name is for a typelib or a function parameter). Otherwise it's the offset
+of the first TypeInfo that this name refers to (either to the TypeInfo itself
+or to a member of the TypeInfo.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Next Hash
+*--*--*--*--*--*--*--*--*--*--*--*--*
+Offset to next name in the hash bucket
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Name Length
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ A one-byte field containing the length of the name in bytes, not counting any
+padding.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Flags?
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Hash Code
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Name String
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ The ASCII text of the name. They are not NULL-terminated.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Padding
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ From zero to three W's, as needed, to make the structure's length a multiple
+of four bytes.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               String Table                *
+            *               TlbString[]                 *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ This segment contains an array of the variable-lengthed TlbString structures.
+It stores data such as "help strings".
+
+A TlbString structure is a minimum of eight bytes and always a multiple of four
+bytes.
+When its length needs adjusting, it is padded as needed with the letter "W".
+The letter "W" can apparently be safely replaced with any other character(s).
+
+    The TlbString Structure
+
+ +-----------------------------------------------------+
+ | Length                                           16 |
+ +-----------------------------------------------------+
+ | String Text                                8[Length]|
+ +-----------------------------------------------------+
+ | Padding                                       "W"[?]| ?
+ +-----------------------------------------------------+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Length
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ The length of the text of the string only.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    String Text
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ The ASCII text of the string. They are not NULL-terminated.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Padding
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ From zero to five W's, as needed, to make the structure at least eight bytes
+and also a multiple of four bytes.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *             Type Descriptors              *
+            *                                           *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+
+ This segment is an array of Type Descriptors. Although a Type Descriptor is
+only eight bytes, it's comparatively complicated to decode. Initially, it is
+useful to regard it as four 16-bit integers, until it's determined whether it
+defines one data type or two:
+* When values are to be referenced with pointers, they are classified as
+  "ByRef" and the "By Ref" flag (bit# 14) in Value2 is set. The primary data
+  type in this case is a pointer (VT_Ptr) and obviously the type of data it
+  points to needs to be specified.
+* Both arrays and vectors are considered to be data types themselves, and
+  obviously, the data types of their elements need to be specified also.
+* In all other cases, only one data type needs to be specified, and bits one
+  through fourteen of Value2 are set to indicate this. Bits zero and fifteen
+  are undefined in these cases, although it appears that bit zero is always
+  set when the data type is user-defined (VT_UserDefined), and never when it
+  isn't.
+
+
+        The Type Descriptor (viewed as four 16-bit integers)
+
+ +-----------------------------------------------------+
+ | Value1 (DataType1)                              ±16 |
+ +-----------------------------------------------------+
+ | Value2 (Flags)                                  ±16 |
+ +-----------------------------------------------------+
+ | Value3                                          ±16 |
+ +-----------------------------------------------------+
+ | Value4                                          ±16 |
+ +-----------------------------------------------------+
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Value1
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    | 15  14  13  12| 11  10  9   8 | 7   6   5   4 | 3   2   1   0 |
+    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    |               |                                               |
+    |               |                                               |
+    |  undefined    |            Primary Data Type                  |
+    |               |                                               |
+    |               |                                               |
+    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+* Value1 contains a data type code in its lower twelve bits. One can apply
+  VT_TypeMask to mask out the upper four bits.
+* If (Value2 AND 0x7FFE) = 0x7FFE then Value1 contains the ONLY data type
+  defined (see "Value2").
+* The interpretations of Value3 and Value4 are based partly on Value1 (see
+  "Value3 and Value4").
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Value2
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    | 15  14  13  12| 11  10  9   8 | 7   6   5   4 | 3   2   1   0 |
+    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+    | R | B | A | V |                                               |
+    | e | y | r | e |                                               |
+    | s | R | r | c |               Base Data Type                  |
+    | e | e | a | t |                                               |
+    | r | f | y | o |                                               |
+    | v |   |   | r |                                               |
+    | e |   |   |   |                                               |
+    | d |   |   |   |                                               |
+    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+ As mentioned above, if (Value2 AND 0x7FFE) = 0x7FFE then Value1 is the only
+data type defined. Otherwise, the primary type is either ByRef, an array or a
+vector and therefore, there's a secondary data type to be defined. If so, then
+the following bit assignments apply.
+The upper four bits are flags and the lower twelve contain the "base data type"
+code. The base data type, is either one which is compatible with the primary
+type, or often, the very same code.
+ Presumably, only one of the flag bits will ever be set. The reserved bit
+hasn't been encountered yet while studying the format.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Value3 and Value4
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Under some conditions, these two are combined to form a single Dword. This
+is done by using Value3 as the low word, and Value4 as the high word. Note
+that the resulting combinations are often subjected to additional operations
+such as ANDing and division.
+
+* If (Value1 AND VT_TypeMask) equals either VT_Ptr or VT_SafeArray then Value
+  3 and Value4 are interpreted as follows:
+
+    * If Value4 is negative (MSB = 1) then (Value3 AND 0x7FF8) yields an offset
+      into the Type Descriptor Table.
+    * If Value4 is NOT negative (MSB = 0) then Value2 and Value3 are to be
+      combined to form a Dword, then ANDed with (Value3 \ 8) to yield an offset
+      into a Type Descriptor file. This doesn't sound sensible, but it looks
+      like what the ReactOS code was doing.
+
+* If (Value1 AND VT_TypeMask) equals VT_CArray then Value3 and Value4 are
+  combined to form a Dword offset into the Array Descriptor Table
+
+* If (Value1 AND VT_TypeMask) equals VT_UserDefined then Value3 and Value4 are
+  combined to form a Dword, then ANDed with 0xFFFFFFF8 to yield an offset into
+  the Type Descriptor Table
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *             Array Descriptors             *
+            *                                           *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ An Array Descriptor segment consists of an array of descriptors in the form of
+ArrayDesc structures.
+
+ ArrayDesc's only appear for arrays for which the element count is specified.
+That is, there would be an ArrayDesc for "int array[10]" ...but not for "int
+array[]".
+
+
+
+        The ArrayDesc Structure
+
+ +-----------------------------------------------------+
+ | Type Descriptor                                  32 |
+ +-----------------------------------------------------+
+ | Dimensions                                       16 |
+ +-----------------------------------------------------+
+ | Data Type                                        16 |
+ +-----------------------------------------------------+
+ | Bound's                   SafeArrayBound[Dimensions]|
+ +-----------------------------------------------------+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Type Descriptor
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ If < 0 then the low-word contains the variable-type code, otherwise it's an
+offset to another array descriptor.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Dimensions
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ The number of dimensions in the array.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Data Type
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ If the low-byte > 0, it contains the datatype code of the data which is stored
+in the array, otherwise the datatype code is in the high-byte.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Bound's
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Contains one SafeArrayBound structure for each dimension of the array, telling
+how many elements are in the dimension and its lower bound.
+
+
+
+
+        The SafeArray Bound (SafeArrayBound) Structure
+
+ +-----------------------------------------------------+
+ | Elements in Array                                32 |
+ +-----------------------------------------------------+
+ | Lower Bound of Array                            ±32 |
+ +-----------------------------------------------------+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Elements in Array
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ The number of elements in the array
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Lower Bound of Array
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ The lower bound of the array
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *           Custom Data Table               *
+            *                                           *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ This segment is used for custom data and default parameter values. It
+contains at minimum, an identifier which incorporates values from a time-
+stamp, the file's size and perhaps other things. The identifier is updated
+every time the ODL/IDL source is compiled.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               GUID Offsets                *
+            *                                           *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ This segment contains 32-bit offsets into the GUID Table. Some offsets are
+set to -1 (0xFFFFFFFF) to mark them as invalid.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               Unknown 02                  *
+            *                                           *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ Details of this segment are unknown at this time.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               Unknown 03                  *
+            *                                           *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ Details of this segment are unknown at this time.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *            Function Records and           *
+            *           Property Records Array          *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ This section contains one or more array groups, each describing functions or
+properties or both.
+ This section's file offset is in the "Function Records" field of the corresponding TypeInfo structure.
+The counts of the functions and properties described in it are in the "Function
+Count" and "Property Count" fields of the TypeInfo structure.
+
+
+    Physical Layout of an Array Group
+
+ +=====================================================+
+ | Size of FuncRecord Array                        ±32 |
+ +=====================================================+ <-+
+ | Function Record            FuncRecord[FunctionCount]| ?  \
+ +=====================================================+     |
+ | Property Record            PropRecord[PropertyCount]| ?   |
+ +=====================================================+      \   Size of
+ | Method / Property ID               32[Func+Prop Cnt]|       |<-----
+ +=====================================================+      /  FuncRecord
+ | Name Offsets                       32[Func+Prop Cnt]|     |      Array
+ +=====================================================+     |
+ | Offsets to Records                 32[Func+Prop Cnt]|    /
+ +=====================================================+ <-+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Size of FuncRecord Array
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ This field contains the size of everything in the array group except for
+itself.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Function Records and Property Records
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Either one or both of these arrays will be present:
+    FuncRecord[FunctionCount]
+    PropRecord[PropertyCount]
+ Function Records always(?) precede Property Records.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    IDs, Names and Records Arrays
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ These, (the last three arrays), all have the same number of elements, which
+is equal to the sum of the "Function Count" and "Property Count" fields of
+the TypeInfo structure. That is, if there are four functions and three
+properties, then they will all have seven elements each.
+* Method / Property ID      32[Function Count + Property Count]
+* Name Offsets              32[Function Count + Property Count]
+* Offsets to Records        32[Function Count + Property Count]
+
+ These are described more fully in a later section.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *           Function Record                 *
+            *            ( FuncRecord )                 *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+ These occur in arrays referenced by the "Function Records" field of a TypeInfo
+structure. They may be accompanied by zero or more Property Records.
+ The number of optional fields is variable and is determined from the record
+size. The rule is: "if there's room for it, then it's there...". The thing to
+remember is, that if a particular optional field is present, then so are all
+the ones that precede it in the order indicated in the diagram. So, if there's
+a HelpStringContext, then there must also be the HelpContext, HelpString, Entry,
+Reserved2 and Reserved3 fields, but not necessarily a "Custom Data" field.
+
+
+        The FuncRecord Structure
+
+ +-----------------------------------------------------+ <--+
+ | RecordSize                                       16 |     \
+ +-----------------------------------------------------+      |
+ | Unknown                                          16 |      |
+ +-----------------------------------------------------+      |
+ | DataType                                        ±16 |      |
+ +-----------------------------------------------------+      |
+ | Flags                                           ±16 |      |
+ +-----------------------------------------------------+      |
+ | Reserved1                                       ±32 |      |
+ +-----------------------------------------------------+      |
+ | Virtual Table ==>                               ±16 |      |
+ +-----------------------------------------------------+      |
+ | Func Desc Size                                  ±16 |      |
+ +-----------------------------------------------------+      |
+ | FKCCIC                                          ±32 |      \
+ +-----------------------------------------------------+       \    RecordSize
+ | Parameter Count                                 ±16 |        |<-----
+ +-----------------------------------------------------+       /
+ | Unknown2                                        ±16 |      /
+ +-----------------------------------------------------+      |
+ | HelpContext                                     ±32 | ?    |
+ +-----------------------------------------------------+      |
+ | HelpString                                      ±32 | ?    |
+ +-----------------------------------------------------+      |
+ | Entry                                           ±32 | ?    |
+ +-----------------------------------------------------+      |
+ | Reserved2                                       ±32 | ?    |
+ +-----------------------------------------------------+      |
+ | Reserved3                                       ±32 | ?    |
+ +-----------------------------------------------------+      |
+ | HelpStringContext                               ±32 | ?    |
+ +-----------------------------------------------------+      |
+ | Custom Data                                     ±32 | ?    |
+ +-----------------------------------------------------+      |
+ | Custom Data for Arguments ==>        ±32[ParamCount]| ?    |
+ +-----------------------------------------------------+      |
+ | Parameter Info                 ParamInfo[ParamCount]| ?   /
+ +-----------------------------------------------------+ <--+
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    RecordSize
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ The size of the FuncRecord structure, including optional fields and
+ParamInfo's
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Unknown
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    DataType
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Data type returned by the function
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Flags
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ If the MSB = 1, then the low byte is valid. So far it seems to always be
+valid, except for pointers. When MSB does equal 1, the low byte is the code
+for a data type that's equivalent to or compatible with that in DataType.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Reserved1
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Virtual Table Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Func Desc Size
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ From ReactOS: Size of the reconstituted FUNCDESC and related structs.
+The "structs" refered to are those used by the operating system for run-time
+storage, and aren't a part of the TypeLib format.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    FKCCIC
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ This field is 32 bits wide, but only the meanings of the lower thirteen bits
+are known.
+
+       +-+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+      /  |               |               |               |               |
+     /   | 15  14  13  12| 11  10  9   8 | 7   6   5   4 | 3   2   1   0 |
+     \   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+      |  | ? | ? | ? | D |   |   |   |   | C |   |   |   |   |   |   |   |
+     /   |   |   |   | e |               | u |               |           |
+     |   |   |   |   | f |    Calling    | s |  Invocation   | Function  |
+    /    |   |   |   | V |  Convention   | t |    Kind       |   Kind    |
+    \    |   |   |   | a |               | D |               |           |
+     \   |   |   |   | l |               | a |               |           |
+     /   |   |   |   | u |               | t |               |           |
+     \   |   |   |   | e |   |   |   |   | a |   |   |   |   |   |   |   |
+      +--+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+* Bits zero through two contain the FunctionKind (see table)
+* Bits three through six contain the InvocationKind (see table)
+* Bit seven is set if there is custom data is present
+* Bits eight through eleven contain the CallingConvention (see table)
+* Bit twelve is set if there a default value is present
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Parameter Count
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Unknown2
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    HelpContext
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    HelpString
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Entry
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Reserved2
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Reserved3
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    HelpStringContext
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Custom Data
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset into the Custom Data Table of Custom Data for the function
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Custom Data for Arguments
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ An array of Custom Data with one element for each parameter. If the MSB = 1,
+then the default value is in the lower three bytes, otherwise, it's an offset
+into the Custom Data Table where the default value can be found. The only time
+an offset is resorted to, is when the default value can't fit into the lower
+24 bits.
+ If a parameter has a default value, bit 5 (PARAMFLAG_FHASDEFAULT) of the
+ParamFlags field of its ParamInfo structure will be set, but the existence of
+a set bit 5 of a ParamFlags field alone, might not reliably indicate the
+presence of a "Custom Data for Arguments" array. To determine if this (optional)
+array is present, one should make sure that there's enough room for it to fit.
+
+Note:
+ If even one parameter has a default value, then there will be elements for
+all the parameters in the FuncRecord, but the only valid elements will be
+the ones for those which actually have default values.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Parameter Info Array
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Is an array of ParamInfo structures described in the next section.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+* Note:
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ The order of the "Virtual Table Offset" and "Func Desc Size" fields are
+reversed for bigendian format.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *            Parameter Info                 *
+            *         ParamInfo[ParamCount]             *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+
+        The ParamInfo Structure
+
+ +-----------------------------------------------------+
+ | DataType                                        ±16 |
+ +-----------------------------------------------------+
+ | Flags                                           ±16 |
+ +-----------------------------------------------------+
+ | Name ==>                                        ±32 |
+ +-----------------------------------------------------+
+ | ParamFlags                                      ±32 |
+ +-----------------------------------------------------+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    DataType
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ The data-type code for the parameter.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Flags
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ ?
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Name Offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Offset to the parameter's name in the Name Table
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    ParamFlags
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+       +-+---+---+---+---+---+---+---+---+
+      /  |               |               |
+     /   | 7   6   5   4 | 3   2   1   0 |
+     \   +---+---+---+---+---+---+---+---+
+      |  | ? | H | H | O | R | L | O | I |
+     /   |   | a | a | p | e | C | u | n |
+     |   |   | s | s | t | t | I | t |   |
+    /    |   | C | D | i | V | D |   |   |
+    \    |   | u | e | o | a |   |   |   |
+     \   |   | s | f | n | l |   |   |   |
+     /   |   | t | a | a |   |   |   |   |
+     /   |   | o | u | l |   |   |   |   |
+     \   |   | m | l |   |   |   |   |   |
+      |  |   | D | t |   |   |   |   |   |
+     /   |   | a |   |   |   |   |   |   |
+    |    |   | t |   |   |   |   |   |   |
+     \   |   | a |   |   |   |   |   |   |
+      +--+---+---+---+---+---+---+---+---+
+
+ As shown in the diagram, the lower seven bits contain flags describing the
+parameter (see the "Parameter Flags" equates):
+    Bit# 0:     In
+    Bit# 1:     Out
+    Bit# 2:     LCID
+    Bit# 3:     RetVal
+    Bit# 4:     Opt
+    Bit# 5:     HasDefault
+    Bit# 6:     HasCustData
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *           Property Record                 *
+            *            ( PropRecord )                 *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ These occur in arrays referenced by the "Function Records" field of a TypeInfo
+structure. They may be accompanied by zero or more Function Records (described
+above). The size of the required fields of the PropRecord structure is 20
+(= 0x14).
+ The number of optional fields is variable and is determined from the record
+size. The rule is: "if there's room for it, then it's there..." The thing to
+remember is, that if a particular optional field is present, then so are all
+the ones that precede it in the order indicated in the diagram. So, if "Custom
+Data" is there, then there must also be the Unknown, HelpContext, HelpString
+and Reserved fields, but not necessarily a HelpStringContext field.
+
+
+        The PropRecord Structure
+
+ +-----------------------------------------------------+ <---+
+ | RecordSize                                       16 |      \
+ +-----------------------------------------------------+       |
+ | PropNum                                          16 |       |
+ +-----------------------------------------------------+       |
+ | DataType                                        ±16 |       |
+ +-----------------------------------------------------+       \
+ | Flags                                           ±16 |        \ RecordSize
+ +-----------------------------------------------------+         |<------
+ | VarKind                                         ±16 |        /
+ +-----------------------------------------------------+       /
+ | Var Desc Size                                   ±16 |       |
+ +-----------------------------------------------------+       |
+ | OffsValue                                       ±32 |       |
+ +-----------------------------------------------------+       |
+ | Unknown                                         ±32 | ?     |
+ +-----------------------------------------------------+       |
+ | HelpContext                                     ±32 | ?     |
+ +-----------------------------------------------------+       |
+ | HelpString                                      ±32 | ?     |
+ +-----------------------------------------------------+       |
+ | Reserved                                        ±32 | ?     |
+ +-----------------------------------------------------+       |
+ | Custom Data ==>                                 ±32 | ?     |
+ +-----------------------------------------------------+       |
+ | HelpStringContext                               ±32 | ?    /
+ +-----------------------------------------------------+ <---+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    RecordSize
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Size of PropRecord
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    PropNum
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Property number?
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    DataType
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Data type of the variable
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Flags
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ VarFlags
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    VarKind
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ VarKind --- %VAR and %VarFlags
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Var Desc Size
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ From ReactOS: Size of the reconstituted VARDESC and related structs.
+The "structs" refered to are those used by the operating system for run-time
+storage, and aren't a part of the TypeLib format.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    OffsValue
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Value of the variable or the offset in the data structure
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Unknown
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    HelpContext
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    HelpString
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Reserved
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Unknown (-1)
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Custom Data offset
+*--*--*--*--*--*--*--*--*--*--*--*--*
+ Custom data for variable
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    HelpStringContext
+*--*--*--*--*--*--*--*--*--*--*--*--*
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+Note:
+*--*--*--*--*--*--*--*--*--*--*--*--*
+The order of the VarKind and VarDescSize fields are reversed for bigendian
+format.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               ID, Name and                *
+            *             Reference Arrays              *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ These three Dword arrays each have one element for every method and property:
+    1) Method/Property IDs
+    2) Offsets to names in Name Table
+    3) Offsets to Records
+
+They are always at the very end of an Array Group of Function Records and
+Property Records. In fact, it appears that "at the very end of the Array Group",
+is the ONLY way to define their locations.
+ All three arrays have the same number of elements, that number being equal to
+FunctionCount + PropertyCount.
+The elements for functions (if any) come before those for properties (if any).
+
+
+
+    Method and Property ID Array
+
+ +-----------------------------------------------------+
+ | Method/Property ID 1                             32 |
+ +-----------------------------------------------------+
+ | Method/Property ID 2                             32 |
+ +-----------------------------------------------------+
+            .....
+ +-----------------------------------------------------+
+ | Method/Property ID[Func+Prop Cnt]                32 |
+ +-----------------------------------------------------+
+
+
+
+    Offsets to names in Name Table
+
+ +-----------------------------------------------------+
+ | Name 1 ==>                                       32 |
+ +-----------------------------------------------------+
+ | Name 2 ==>                                       32 |
+ +-----------------------------------------------------+
+            .....
+ +-----------------------------------------------------+
+ | Name[Func+Prop Cnt] ==>                          32 |
+ +-----------------------------------------------------+
+
+
+
+    Offsets to Records
+
+ +-----------------------------------------------------+
+ | Record 1 ==>                                     32 |
+ +-----------------------------------------------------+
+ | Record 2 ==>                                     32 |
+ +-----------------------------------------------------+
+            .....
+ +-----------------------------------------------------+
+ | Record[Func+Prop Cnt] ==>                        32 |
+ +-----------------------------------------------------+
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               Locale IDs                  *
+            *                                           *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*---------
+                        Language
+ ID         Abbr.       and Locality
+*--*--*--*--*--*--*--*--*--*--*--*--*---------
+0x0401  ARA             Arabic Saudi Arabia
+0x0801  ARI             Arabic Iraq
+0x0C01  ARE             Arabic Egypt
+0x1001  ARL             Arabic Libya
+0x1401  ARG             Arabic Algeria
+0x1801  ARM             Arabic Morocco
+0x1C01  ART             Arabic Tunisia
+0x2001  ARO             Arabic Oman
+0x2401  ARY             Arabic Yemen
+0x2801  ARS             Arabic Syria
+0x2C01  ARJ             Arabic Jordan
+0x3001  ARB             Arabic Lebanon
+0x3401  ARK             Arabic Kuwait
+0x3801  ARU             Arabic U.A.E.
+0x3C01  ARH             Arabic Bahrain
+0x4001  ARQ             Arabic Qatar
+0x0402  BGR             Bulgarian Bulgaria
+0x0403  CAT             Catalan Spain
+0x0404  CHT             Chinese Taiwan
+0x0804  CHS             Chinese PRC
+0x0C04  ZHH             Chinese Hong Kong
+0x1004  ZHI             Chinese Singapore
+0x1404  ZHM             Chinese Macau
+0x0405  CSY             Czech Czech Republic
+0x0406  DAN             Danish Denmark
+0x0407  GERMANY         German Germany
+0x0807  DES             German Switzerland
+0x0C07  DEA             German Austria
+0x1007  DEL             German Luxembourg
+0x1407  DEC             German Liechtenstein
+0x0408  ELL             Greek Greece
+0x0409  USA             English United States
+0x0809  ENG             English United Kingdom
+0x0C09  ENA             English Australia
+0x1009  ENC             English Canada
+0x1409  ENZ             English New Zealand
+0x1809  ENI             English Ireland
+0x1C09  ENS             English South Africa
+0x2009  ENJ             English Jamaica
+0x2409  ENB             English Caribbean
+0x2809  ENL             English Belize
+0x2C09  ENT             English Trinidad
+0x3009  ENW             English Zimbabwe
+0x3409  ENP             English Philippines
+0x040A  SPAIN           Spanish Spain
+0x080A  ESM             Spanish Mexico
+0x0C0A  ESN             Spanish Spain (International Sort)
+0x100A  ESG             Spanish Guatemala
+0x140A  ESC             Spanish Costa Rica
+0x180A  ESA             Spanish Panama
+0x1C0A  ESD             Spanish Dominican Republic
+0x200A  ESV             Spanish Venezuela
+0x240A  ESO             Spanish Colombia
+0x280A  ESR             Spanish Peru
+0x2C0A  ESS             Spanish Argentina
+0x300A  ESF             Spanish Ecuador
+0x340A  ESL             Spanish Chile
+0x380A  ESY             Spanish Uruguay
+0x3C0A  ESZ             Spanish Paraguay
+0x400A  ESB             Spanish Bolivia
+0x440A  ESE             Spanish El Salvador
+0x480A  ESH             Spanish Honduras
+0x4C0A  ESI             Spanish Nicaragua
+0x500A  ESU             Spanish Puerto Rico
+0x040B  FIN             Finnish Finland
+0x040C  FRANCE          French France
+0x080C  FRB             French Belgium
+0x0C0C  FRC             French Canada
+0x100C  FRS             French Switzerland
+0x140C  FRL             French Luxembourg
+0x180C  FRM             French Monaco
+0x040D  HEB             Hebrew Israel
+0x040E  HUN             Hungarian Hungary
+0x040F  ISL             Icelandic Iceland
+0x0410  ITALY           Italian Italy
+0x0810  ITS             Italian Switzerland
+0x0411  JAPAN           Japanese Japan
+0x0412  KOREA           Korean Korea
+0x0413  NLD             Dutch Netherlands
+0x0813  NLB             Dutch Belgium
+0x0414  NOR             Norwegian Norway (Bokmål)
+0x0814  NON             Norwegian Norway (Nynorsk)
+0x0415  PLK             Polish Poland
+0x0416  BRAZIL          Portuguese Brazil
+0x0816  PTG             Portuguese Portugal
+0x0418  ROM             Romanian Romania
+0x0419  RUS             Russian Russia
+0x041A  HRV             Croatian Croatia
+0x081A  SRL             Serbian Serbia (Latin)
+0x0C1A  SRB             Serbian Serbia (Cyrillic)
+0x041B  SKY             Slovak Slovakia
+0x041C  SQI             Albanian Albania
+0x041D  SVE             Swedish Sweden
+0x081D  SVF             Swedish Finland
+0x041E  THA             Thai Thailand
+0x041F  TRK             Turkish Turkey
+0x0420  URP             Urdu Pakistan
+0x0421  IND             Indonesian Indonesia
+0x0422  UKR             Ukrainian Ukraine
+0x0423  BEL             Belarusian Belarus
+0x0424  SLV             Slovene Slovenia
+0x0425  ETI             Estonian Estonia
+0x0426  LVI             Latvian Latvia
+0x0427  LTH             Lithuanian Lithuania
+0x0827  LTC             Classic Lithuanian Lithuania
+0x0429  FAR             Farsi Iran
+0x042A  VIT             Vietnamese Viet Nam
+0x042B  HYE             Armenian Armenia
+0x042C  AZE             Azeri Azerbaijan (Latin)
+0x082C  AZE             Azeri Azerbaijan (Cyrillic)
+0x042D  EUQ             Basque Spain
+0x042F  MKI             Macedonian Macedonia
+0x0436  AFK             Afrikaans South Africa
+0x0437  KAT             Georgian Georgia
+0x0438  FOS             Faeroese Faeroe Islands
+0x0439  HIN             Hindi India
+0x043E  MSL             Malay Malaysia
+0x083E  MSB             Malay Brunei Darussalam
+0x043F  KAZ             Kazak Kazakstan
+0x0441  SWK             Swahili Kenya
+0x0443  UZB             Uzbek Uzbekistan (Latin)
+0x0843  UZB             Uzbek Uzbekistan (Cyrillic)
+0x0444  TAT             Tatar Tatarstan
+0x0445  BEN             Bengali India
+0x0446  PAN             Punjabi India
+0x0447  GUJ             Gujarati India
+0x0448  ORI             Oriya India
+0x0449  TAM             Tamil India
+0x044A  TEL             Telugu India
+0x044B  KAN             Kannada India
+0x044C  MAL             Malayalam India
+0x044D  ASM             Assamese India
+0x044E  MAR             Marathi India
+0x044F  SAN             Sanskrit India
+0x0457  KOK             Konkani India
+0x0000  Language-Neutral,               Language-Neutral
+0x0400  Process Default Language,       Process Default Language
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               Data-Types                  *
+            *            (Variable-Types)               *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+ Codes, masks and flags relating to variable types.
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Variable Types
+*--*--*--*--*--*--*--*--*--*--*--*--*
+VT_Empty            = 0
+VT_Null             = 1
+VT_I2               = 2
+VT_I4               = 3
+VT_R4               = 4
+VT_R8               = 5
+VT_Cy               = 6
+VT_Date             = 7
+VT_BStr             = 8
+VT_Dispatch         = 9
+VT_Error            = 10
+VT_Bool             = 11
+VT_Variant          = 12
+VT_Unknown          = 13
+VT_Decimal          = 14
+VT_I1               = 16
+VT_UI1              = 17
+VT_UI2              = 18
+VT_UI4              = 19
+VT_I8               = 20
+VT_UI8              = 21
+VT_Int              = 22
+VT_UInt             = 23
+VT_Void             = 24
+VT_HResult          = 25
+VT_Ptr              = 26
+VT_SafeArray        = 27
+VT_CArray           = 28
+VT_UserDefined      = 29
+VT_LPStr            = 30
+VT_LPWStr           = 31
+VT_Record           = 36
+VT_FileTime         = 64
+VT_Blob             = 65
+VT_Stream           = 66
+VT_Storage          = 67
+VT_Streamed_Object  = 68
+VT_Stored_Object    = 69
+VT_Blob_Object      = 70
+VT_CF               = 71
+VT_ClsID            = 72
+
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Flags
+*--*--*--*--*--*--*--*--*--*--*--*--*
+VT_Bstr_Blob        = 0x0FFF
+VT_Vector           = 0x1000
+VT_Array            = 0x2000
+VT_ByRef            = 0x4000
+VT_Reserved         = 0x8000
+
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Masks
+*--*--*--*--*--*--*--*--*--*--*--*--*
+VT_Illegal          = 0xFFFF
+VT_IllegalMasked    = 0x0FFF
+VT_TypeMask         = 0x0FFF
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *           Calling Convention              *
+            *                 Codes                     *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+CC_FASTCALL     = 0
+CC_CDECL        = 1
+CC_MSCPASCAL    = 2
+CC_PASCAL       = 2
+CC_MACPASCAL    = 3
+CC_STDCALL      = 4
+CC_FPFASTCALL   = 5
+CC_SYSCALL      = 6
+CC_MPWCDECL     = 7
+CC_MPWPASCAL    = 8
+CC_MAX          = 9
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *              Function Type                *
+            *                  Codes                    *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+FUNC_VIRTUAL        = 0
+FUNC_PUREVIRTUAL    = 1
+FUNC_NONVIRTUAL     = 2
+FUNC_STATIC         = 3
+FUNC_DISPATCH       = 4
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *             Function Flags                *
+            *                                           *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+FUNCFLAG_FRESTRICTED        = 0x000001
+FUNCFLAG_FSOURCE            = 0x000002
+FUNCFLAG_FBINDABLE          = 0x000004
+FUNCFLAG_FREQUESTEDIT       = 0x000008
+FUNCFLAG_FDISPLAYBIND       = 0x000010
+FUNCFLAG_FDEFAULTBIND       = 0x000020
+FUNCFLAG_FHIDDEN            = 0x000040
+FUNCFLAG_FUSESGETLASTERROR  = 0x000080
+FUNCFLAG_FDEFAULTCOLLELEM   = 0x000100
+FUNCFLAG_FUIDEFAULT         = 0x000200
+FUNCFLAG_FNONBROWSABLE      = 0x000400
+FUNCFLAG_FREPLACEABLE       = 0x000800
+FUNCFLAG_FIMMEDIATEBIND     = 0x001000
+#If Def(MAC)
+FUNCFLAG_FORCELONG          = 0x7FFFFFFF
+#Endif
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *           Invocation Kind                 *
+            *                Flags                      *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+
+INVOKE_FUNC                 = 1
+INVOKE_PROPERTYGET          = 2
+INVOKE_PROPERTYPUT          = 4
+INVOKE_PROPERTYPUTREF       = 8
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *            Parameter Flags                *
+            *                                           *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+PARAMFLAG_NONE              = 0x0000
+PARAMFLAG_FIN               = 0x0001
+PARAMFLAG_FOUT              = 0x0002
+PARAMFLAG_FLCID             = 0x0004
+PARAMFLAG_FRETVAL           = 0x0008
+PARAMFLAG_FOPT              = 0x0010
+PARAMFLAG_FHASDEFAULT       = 0x0020
+PARAMFLAG_FHASCUSTDATA      = 0x0040
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               System Kind                 *
+            *                  Codes                    *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+SYS_WIN16   = 0
+SYS_WIN32   = 1
+SYS_MAC     = 2
+
+
+*--*--*--*--*--*--*--*--*--*--*--*--*
+    Notes:
+*--*--*--*--*--*--*--*--*--*--*--*--*
+SYS_WIN16 --- The target operating system for the type library is 16-bit Windows
+systems. By default, data members are packed.
+
+SYS_WIN32 --- The target operating system for the type library is 32-bit Windows
+systems. By default, data members are naturally aligned (for example, 2-byte
+integers are aligned on even-byte boundaries; 4-byte integers are aligned on
+quad-word boundaries, and so on).
+
+SYS_MAC --- The target operating system for the type library is Apple Macintosh.
+By default, all data members are aligned on even-byte boundaries.
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               Type Kind                   *
+            *                 Codes                     *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+TKIND_ENUM          = 0
+TKIND_RECORD        = 1
+TKIND_MODULE        = 2
+TKIND_INTERFACE     = 3
+TKIND_DISPATCH      = 4
+TKIND_COCLASS       = 5
+TKIND_ALIAS         = 6
+TKIND_UNION         = 7
+TKIND_MAX           = 8
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
+
+
+              * * * * * * * * * * * * * * * * * * * * *
+             *                                         *
+            *               Type Flags                  *
+            *                                           *
+             *                                         *
+              * * * * * * * * * * * * * * * * * * * * *
+
+
+
+
+TYPEFLAG_FAPPOBJECT         = 0x00001
+TYPEFLAG_FCANCREATE         = 0x00002
+TYPEFLAG_FLICENSED          = 0x00004
+TYPEFLAG_FPREDECLID         = 0x00008
+TYPEFLAG_FHIDDEN            = 0x00010
+TYPEFLAG_FCONTROL           = 0x00020
+TYPEFLAG_FDUAL              = 0x00040
+TYPEFLAG_FNONEXTENSIBLE     = 0x00080
+TYPEFLAG_FOLEAUTOMATION     = 0x00100
+TYPEFLAG_FRESTRICTED        = 0x00200
+TYPEFLAG_FAGGREGATABLE      = 0x00400
+TYPEFLAG_FREPLACEABLE       = 0x00800
+TYPEFLAG_FDISPATCHABLE      = 0x01000
+TYPEFLAG_FREVERSEBIND       = 0x02000
+
+
+
+
+<o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o><o>
